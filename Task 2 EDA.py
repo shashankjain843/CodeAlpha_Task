@@ -1,0 +1,57 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import pearsonr
+
+# Step 1: Scrape book data
+url = "http://books.toscrape.com"
+response = requests.get(url)
+soup = BeautifulSoup(response.content, "html.parser")
+
+books = soup.select('.product_pod')
+
+titles = []
+prices = []
+ratings = []
+
+for book in books:
+    title = book.h3.a['title']
+    price = book.select_one('.price_color').text.strip().replace('£', '')
+    rating_class = book.select_one('p.star-rating')['class'][1]
+    
+    titles.append(title)
+    prices.append(float(price))
+    
+    # Convert rating text to number
+    rating_dict = {'One': 1, 'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5}
+    ratings.append(rating_dict.get(rating_class, 0))
+
+# Step 2: Create DataFrame
+df = pd.DataFrame({
+    "Title": titles,
+    "Price": prices,
+    "Rating": ratings
+})
+
+df.to_csv("books.csv", index=False)
+
+# Step 3: EDA
+print(df.info())
+print(df.describe())
+print(df.head())
+
+# Step 4: Price distribution
+sns.histplot(df['Price'], bins=10, kde=True)
+plt.title("Price Distribution")
+plt.xlabel("Price (£)")
+plt.ylabel("Count")
+plt.show()
+
+# Step 5: Correlation between Rating and Price
+corr, _ = pearsonr(df['Rating'], df['Price'])
+print(f"Correlation between Rating and Price: {corr:.2f}")
+
+# Step 6: Check for missing values
+print("\nMissing Values:\n", df.isnull().sum())
